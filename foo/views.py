@@ -1,11 +1,10 @@
 import uuid
-import json
-import requests
 
-from django.conf import settings
 from django.shortcuts import render
 
+from foo import client
 from foo.forms import JRPCRequestFrom
+from foo.utils import get_cert_file_name, get_key_file_name
 
 
 def main_view(request):
@@ -13,7 +12,7 @@ def main_view(request):
     if request.method == 'POST':
         form = JRPCRequestFrom(request.POST)
         if form.is_valid():
-            cert = (settings.CER_PATH, settings.KEY_PATH)
+            cert = (get_cert_file_name(), get_key_file_name())
             url = form.cleaned_data['endpoint']
             headers = {"content-type": "application/json"}
             payload = {
@@ -24,14 +23,8 @@ def main_view(request):
             if params := form.cleaned_data['params']:
                 payload.update(params=params)
             try:
-                payload = json.dumps(payload)
-                response = requests.post(
-                    url=url,
-                    data=payload,
-                    headers=headers,
-                    cert=cert,
-                )
-                result = response.json()
+                response = client.post(url, payload, headers, cert)
+                result = response.read().decode()
             except Exception as error:
                 result = str(error)
     else:
